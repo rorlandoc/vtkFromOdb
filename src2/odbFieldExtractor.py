@@ -4,10 +4,10 @@ from abaqusConstants import *
 from odbTools import Timer, log, logList, logProgress, writeArray, getOriginalOdbName
 import numpy as np
 
-scalar  = ['SDV', 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
+scalar  = ['SDV']#, 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
 vector  = ['U']
-tensor  = ['S', 'LE']
-contact = ['CSDMG']#, 'COPEN', 'CPRESS']
+tensor  = []#'S', 'LE']
+contact = []#'CSDMG']#, 'COPEN', 'CPRESS']
 tensorComponents = ['11', '22', '33', '12']
 # tensorInvariants = ['MAX_INPLANE_PRINCIPAL', 'MIN_INPLANE_PRINCIPAL', 'OUTOFPLANE_PRINCIPAL', 
 #                     'MAX_PRINCIPAL', 'MID_PRINCIPAL', 'MIN_PRINCIPAL']
@@ -259,6 +259,11 @@ def extractFieldData(odb, frameIdList):
         vectorFields  = [x for x in fieldList for y in vector  if y == x]
         tensorFields  = [x for x in fieldList for y in tensor  if y == x]
         contactFields = [x for x in fieldList for y in contact if y in x]
+
+        logList("scalarFields", scalarFields) if len(scalarFields)>0 else None
+        logList("vectorFields", vectorFields) if len(vectorFields)>0 else None
+        logList("tensorFields", tensorFields) if len(tensorFields)>0 else None
+        logList("contactFields", contactFields) if len(contactFields)>0 else None
         
         if odbName.endswith(".odb"):
             odbName = odbName[:-4]

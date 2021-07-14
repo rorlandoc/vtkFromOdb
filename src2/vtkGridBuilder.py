@@ -54,6 +54,7 @@ def getFieldData(odbName, instances, frame):
     files = os.listdir(fieldsPath)
     fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i + ' ' in f] for i in instances}
 
+
     data = {}
     for instance in fields:
         logList("fields",fields[instance])
