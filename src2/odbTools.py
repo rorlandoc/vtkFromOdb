@@ -3,16 +3,22 @@ import json
 
 #---
 def formatElapsedTime(dt):
+    s = dt
+    days    = s // (24*3600); s %= (24*3600)
+    hours   = s // 3600;      s %= 3600
+    minutes = s // 60;        s %= 60
+    if dt > 3600*24:
+        return '{0:2g} days {0:2g} h {1:2g} min {2:.2f} s'.format(days, hours, minutes, s)
     if dt > 3600:
-        return '{0:2g} h {1:2g} min {2:.2f} s'.format((dt//60)//60, dt//60, dt%60)
+        return '{0:2g} h {1:2g} min {2:.2f} s'.format(hours, minutes, s)
     elif dt>60:
-        return '{0:2g} min {1:.2f} s'.format(dt//60, dt%60)
+        return '{0:2g} min {1:.2f} s'.format(minutes, s)
     elif dt>1:
-        return '{0:.2f} s'.format(dt)
+        return '{0:.2f} s'.format(s)
     elif dt<0.001:
-        return '{0:.2f} us'.format(1000000.0*dt)
+        return '{0:.2f} us'.format(1000000.0*s)
     else:
-        return '{0:.2f} ms'.format(1000.0*dt)
+        return '{0:.2f} ms'.format(1000.0*s)
 #---
 
 #---

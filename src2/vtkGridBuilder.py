@@ -1,6 +1,6 @@
 import os, sys
 import vtk
-from vtkTools import log, readArray, Timer
+from vtkTools import log, logList, readArray, Timer
 
 timer = Timer()
 timerInstance = Timer()
@@ -52,10 +52,11 @@ def getFieldData(odbName, instances, frame):
 
     fieldsPath = "{0}/fields/{1}/".format(odbName,frame)
     files = os.listdir(fieldsPath)
-    fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i in f] for i in instances}
+    fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i + ' ' in f] for i in instances}
 
     data = {}
     for instance in fields:
+        logList("fields",fields[instance])
         log(1, "vtkGridBuilder", "Reading {0} fields".format(instance))
         data[instance] = {x:readArray(fieldsPath + instance + ' ' + x, float) for x in fields[instance]}
 

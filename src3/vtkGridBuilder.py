@@ -48,7 +48,7 @@ def getFieldData(odbName, instances, frame):
 
     fieldsPath = "{0}/fields/{1}/".format(odbName,frame)
     files = os.listdir(fieldsPath)
-    fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i in f] for i in instances}
+    fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i + ' ' in f] for i in instances}
 
     data = {}
     for instance in fields:
@@ -73,7 +73,6 @@ def buildUnstructuredGrid(odbName):
     for i, frame in enumerate(frames):
         log(1, "vtkGridBuilder", "Processing frame {0}/{1}".format(i+1, len(frames)))
         fields, data = getFieldData(odbName, instances, frame)
-        #os.makedirs("{0}/vtk/{1}".format(odbName, frame))
         
         grid = []
         for ip, instance in enumerate(instances):

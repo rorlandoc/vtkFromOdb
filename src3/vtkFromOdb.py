@@ -59,26 +59,7 @@ if __name__=="__main__":
     if not odbName.endswith('.odb'):
         odbName = odbName + '.odb'
     if os.path.exists(odbName):
-
-        log(0, "vtkFromOdb", "Creating relevant directories")
-        # try:
-        #     os.makedirs(odbName[:-4] + "/fields")
-        #     os.makedirs(odbName[:-4] + "/meshes")
-        #     os.makedirs(odbName[:-4] + "/vtk")
-        # except:
-        #     dirId = 1
-        #     while os.path.exists("{0}_{1}".format(odbName[:-4], dirId)):
-        #         dirId = dirId + 1
-        #         if dirId > 100:
-        #             log(0, "vtkFromOdb | ERROR", "Too many attempts to move output directory", 2, 2)
-        #             exit(-1)
-        #     log(0, "vtkFromOdb", "Moving existing output directory to {0}_{1}".format(odbName[:-4], dirId))
-        #     shutil.move(odbName[:-4], "{0}_{1}".format(odbName[:-4], dirId))
-        #     os.makedirs(odbName[:-4] + "/fields")
-        #     os.makedirs(odbName[:-4] + "/meshes")
-        #     os.makedirs(odbName[:-4] + "/vtk")
-
-        getOdbData(odbName)
+        #getOdbData(odbName)
         createUnstructuredGrid(odbName)
     else:
         log(0, "vtkFromOdb | ERROR", "File not found: {0}".format(odbName), 2, 2)

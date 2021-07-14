@@ -4,7 +4,7 @@ from abaqus import *
 from odbAccess import openOdb
 from odbMeshExtractor import extractMeshData
 from odbFieldExtractor import extractFieldData
-from odbTools import log, logList, json_load_byteified, writeList, getOriginalOdbName
+from odbTools import log, logProgress, json_load_byteified, writeList, getOriginalOdbName
 
 #---
 def init(odbName):
@@ -23,18 +23,6 @@ def getFramesFromIds(odb, frameIdList):
 #---
 
 #---
-def getAllFields(odb, frameList):
-    log(0, "odbExtractor", "Collecting fields")
-    fieldList = []
-    for frame in frameList:
-        fields = frame.fieldOutputs.values()
-        for field in fields:
-            if not field.name in fieldList:
-                fieldList.append(field.name)
-    return fieldList
-#---
-
-#---
 def copyOriginalOdb(odbName):
     copyIndex = 0
     newOdbName = "{0}_{1}.odb".format(odbName[:-4],copyIndex)
@@ -50,10 +38,10 @@ def copyOriginalOdb(odbName):
 #---
 
 #---
-def extractData(odb, frameList, fieldList):
+def extractData(odb, frameList):
     log(0, "odbExtractor", "Started process to extract data from odb")
     extractMeshData(odb)
-    extractFieldData(odb, frameList, fieldList)
+    extractFieldData(odb, frameList)
 #---    
 
 #---
@@ -94,11 +82,10 @@ if __name__ == "__main__":
     if extracting:
         newOdbName = copyOriginalOdb(odbName)
         odb = init(newOdbName)
-        frameList = getFramesFromIds(odb, frameIdList)
-        fieldList = getAllFields(odb, frameList)
-        extractData(odb, frameList, fieldList)
+        frameIdList = [[x[0]-1, x[1]] for x in frameIdList]
+        extractData(odb, frameIdList)
         odb.close()
-        #os.remove(newOdbName)
+        os.remove(newOdbName)
         if os.path.isfile("_errChecker"):
             os.remove("_errChecker")
     

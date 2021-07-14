@@ -1,13 +1,10 @@
-import os, sys
+import os, sys, pdb
 from abaqus import *
 from abaqusConstants import *
 from odbTools import Timer, log, logList, logProgress, writeArray, getOriginalOdbName
 import numpy as np
 
-timer = Timer()
-timerInstance = Timer()
-
-scalar  = ['SDV', 'FV', 'UVARM']
+scalar  = ['SDV', 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
 vector  = ['U']
 tensor  = ['S', 'LE']
 contact = ['CSDMG']#, 'COPEN', 'CPRESS']
@@ -75,34 +72,39 @@ def computeMaxAbsEnvelope(frame, field, instance, id=0):
     return auxField
 #---
 
+
+
 #---
 def averageBulkNodeData(bulkDataBlocks, size):
     log(1,"odbFieldExtractor", "Starting nodal averaging")
+    log(1,"odbFieldExtractor", "Processing {0} bulkDataBlocks".format(len(bulkDataBlocks)))
+
     data = np.zeros(size)
     count = np.zeros(size)
     for block in bulkDataBlocks:
         unsortedData = block.data
         labels = block.nodeLabels
-        total = len(labels)
-        lastVal = 0
-        prog = 0
-        lastVal = logProgress(prog, lastVal)
         for i,label in enumerate(labels):
-            prog = (float(i + 1)/float(total))*100.0
-            lastVal = logProgress(prog, lastVal)
             data[label - 1] += unsortedData[i]
             if len(size) > 1:
                 count[label - 1] += np.array((1,)*size[1])
             else:
                 count[label - 1] += 1
-    data = data/count
+
+    if len(size) > 1:
+        nzId = np.nonzero(count[:,0])
+    else:
+        nzId = np.nonzero(count)
+    data[nzId] = data[nzId] / count[nzId]
+
     return data
 #---
 
 #---
 def processScalarField(field, instance, frame):
-    timerInstance.reset()
-    timerInstance.restart()
+    t = Timer()
+    t.reset()
+    t.restart()
     log(1,"odbFieldExtractor", "Processing scalar field: {0}".format(field.name))
 
     data = None
@@ -113,16 +115,17 @@ def processScalarField(field, instance, frame):
     else:
         log(1,"odbFieldExtractor", "BulkDataBlocks had no data")
 
-    timerInstance.stop()
-    log(1, "odbFieldExtractor", "Process completed in {0}".format(timerInstance))
+    t.stop()
+    log(1, "odbFieldExtractor", "Process completed in {0}".format(t))
 
     return data
 #---
 
 #---
 def processVectorField(field, instance):
-    timerInstance.reset()
-    timerInstance.restart()
+    t = Timer()
+    t.reset()
+    t.restart()
     log(1,"odbFieldExtractor", "Processing vector field: {0}".format(field.name))
 
     data = None
@@ -135,16 +138,17 @@ def processVectorField(field, instance):
         else:
             data = bulkData[0].data
 
-    timerInstance.stop()
-    log(1, "odbFieldExtractor", "Process completed in {0}".format(timerInstance))
+    t.stop()
+    log(1, "odbFieldExtractor", "Process completed in {0}".format(t))
 
     return data
 #---
 
 #---
 def processTensorField(field, instance, frame):
-    timerInstance.reset()
-    timerInstance.restart()
+    t = Timer()
+    t.reset()
+    t.restart()
     log(1,"odbFieldExtractor", "Processing tensor field: {0}".format(field.name))
 
     data = None
@@ -155,16 +159,17 @@ def processTensorField(field, instance, frame):
     else:
         log(1,"odbFieldExtractor", "BulkDataBlocks had no data")
 
-    timerInstance.stop()
-    log(1, "odbFieldExtractor", "Process completed in {0}".format(timerInstance))
+    t.stop()
+    log(1, "odbFieldExtractor", "Process completed in {0}".format(t))
         
     return data
 #---
 
 #---
 def processTensorInvariants(field, instance, frame, maxAbs = False):
-    timerInstance.reset()
-    timerInstance.restart()
+    t = Timer()
+    t.reset()
+    t.restart()
     log(1,"odbFieldExtractor", "Processing tensor invariants of: {0}".format(field.name))
 
     data = None
@@ -188,16 +193,17 @@ def processTensorInvariants(field, instance, frame, maxAbs = False):
     else:
         log(1,"odbFieldExtractor", "BulkDataBlocks had no data")
 
-    timerInstance.stop()
-    log(1, "odbFieldExtractor", "Process completed in {0}".format(timerInstance))
+    t.stop()
+    log(1, "odbFieldExtractor", "Process completed in {0}".format(t))
         
     return data, invariantStr
 #---
 
 #---
 def processContactField(field, instance, frame):
-    timerInstance.reset()
-    timerInstance.restart()
+    t = Timer()
+    t.reset()
+    t.restart()
     log(1,"odbFieldExtractor", "Processing contact field: {0}".format(field.name))
 
     data = None
@@ -226,39 +232,41 @@ def processContactField(field, instance, frame):
     else:
         log(1,"odbFieldExtractor", "BulkDataBlocks had no data")
 
-    timerInstance.stop()
-    log(1, "odbFieldExtractor", "Process completed in {0}".format(timerInstance))
+    t.stop()
+    log(1, "odbFieldExtractor", "Process completed in {0}".format(t))
 
     return data
 #---
 
 #---
-def extractFieldData(odb, frameList, fieldList):
+def extractFieldData(odb, frameIdList):
+    timer = Timer()
     timer.reset()
     timer.restart()
     log(0,"odbFieldExtractor", "Started process to extract field data from odb")
-    log(0,"odbFieldExtractor", "Extracting {0} frames".format(len(frameList)))
-
-    scalarFields  = [x for x in fieldList for y in scalar  if y in x]
-    vectorFields  = [x for x in fieldList for y in vector  if y == x]
-    tensorFields  = [x for x in fieldList for y in tensor  if y == x]
-    contactFields = [x for x in fieldList for y in contact if y in x]
-
-    logList("scalarFields", scalarFields) if len(scalarFields) > 0 else None
-    logList("vectorFields", vectorFields) if len(vectorFields) > 0 else None
-    logList("tensorFields", tensorFields) if len(tensorFields) > 0 else None
-    logList("contactFields", contactFields) if len(contactFields) > 0 else None
-
+    log(0,"odbFieldExtractor", "Extracting {0} frames".format(len(frameIdList)))
 
     odbName = odb.name.split("/")[-1]
-    for i, frame in enumerate(frameList):
-        log(0,"odbFieldExtractor", "Processing frame {0}/{1}".format(i+1, len(frameList)))
+    instances = odb.rootAssembly.instances
+    instanceNames = odb.rootAssembly.instances.keys()
+    instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
+    for i, frameId in enumerate(frameIdList):
+        log(0,"odbFieldExtractor", "Processing frame {0}/{1}".format(i+1, len(frameIdList)))
+        frame = odb.steps.values()[frameId[0]].frames[frameId[1]]
+        fieldList = frame.fieldOutputs.keys()
+
+        scalarFields  = [x for x in fieldList for y in scalar  if y in x]
+        vectorFields  = [x for x in fieldList for y in vector  if y == x]
+        tensorFields  = [x for x in fieldList for y in tensor  if y == x]
+        contactFields = [x for x in fieldList for y in contact if y in x]
+        
         if odbName.endswith(".odb"):
             odbName = odbName[:-4]
         savePath = getOriginalOdbName(odbName) + '/fields/frame{0}'.format(i)
         os.makedirs(savePath)
 
-        for instance in odb.rootAssembly.instances.values():
+        for instanceName in instanceNames:
+            instance = instances[instanceName]
             log(0,"odbFieldExtractor", "Processing instance {0}".format(instance.name))
             scalarData = None
             vectorData = None
@@ -307,9 +315,11 @@ def extractFieldData(odb, frameList, fieldList):
             #         else:
             #             contactData += processContactField(field, instance, frame)
                     
-            if not contactData is None:
-                log(0,"odbFieldExtractor", "Printing field {0}".format(contactField.split()[0].strip()))
-                writeArray("{0}/{1} {2}.csv".format(savePath, instance.name, contactField.split()[0].strip()), contactData)
+            # if not contactData is None:
+            #     log(0,"odbFieldExtractor", "Printing field {0}".format(contactField.split()[0].strip()))
+            #     writeArray("{0}/{1} {2}.csv".format(savePath, instance.name, contactField.split()[0].strip()), contactData)
+        
+        del frame
 
     timer.stop()
     log(0, "odbFieldExtractor", "Process completed in {0}".format(timer))

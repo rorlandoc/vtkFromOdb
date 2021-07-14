@@ -48,8 +48,11 @@ def extractMeshData(odb):
     timer.reset()
     timer.restart()
     log(0, "odbMeshExtractor", "Started process to extract mesh data from odb")
-    instances = odb.rootAssembly.instances.values()
-    for instance in instances:
+    instances = odb.rootAssembly.instances
+    instanceNames = odb.rootAssembly.instances.keys()
+    instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
+    for instanceName in instanceNames:
+        instance = instances[instanceName]
         nodes = extractNodalCoordinates(instance)
         els, elsType = extractElementConectivities(instance)
 
