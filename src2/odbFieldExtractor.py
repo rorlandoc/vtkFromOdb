@@ -4,10 +4,10 @@ from abaqusConstants import *
 from odbTools import Timer, log, logList, logProgress, writeArray, getOriginalOdbName
 import numpy as np
 
-scalar  = ['SDV']#, 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
+scalar  = ['SDV', 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
 vector  = ['U']
-tensor  = []#'S', 'LE']
-contact = []#'CSDMG']#, 'COPEN', 'CPRESS']
+tensor  = ['S', 'LE']
+contact = ['CSDMG']
 tensorComponents = ['11', '22', '33', '12']
 # tensorInvariants = ['MAX_INPLANE_PRINCIPAL', 'MIN_INPLANE_PRINCIPAL', 'OUTOFPLANE_PRINCIPAL', 
 #                     'MAX_PRINCIPAL', 'MID_PRINCIPAL', 'MIN_PRINCIPAL']
@@ -250,6 +250,7 @@ def extractFieldData(odb, frameIdList):
     instances = odb.rootAssembly.instances
     instanceNames = odb.rootAssembly.instances.keys()
     instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
+    instanceNames = instanceNames[::-1]
     for i, frameId in enumerate(frameIdList):
         log(0,"odbFieldExtractor", "Processing frame {0}/{1}".format(i+1, len(frameIdList)))
         frame = odb.steps.values()[frameId[0]].frames[frameId[1]]
@@ -312,17 +313,23 @@ def extractFieldData(odb, frameIdList):
                         writeArray("{0}/{1} {2}_{3}.csv".format(savePath, instance.name, tensorField, inv), invData[:,ii])
                     invData = None
             
-            # for contactField in contactFields: 
-            #     if contactField in frame.fieldOutputs.keys():
-            #         field = frame.fieldOutputs[contactField]
-            #         if contactData is None:
-            #             contactData = processContactField(field, instance, frame)
-            #         else:
-            #             contactData += processContactField(field, instance, frame)
+            for contactField in contactFields: 
+                if contactField in frame.fieldOutputs.keys():
+                    field = frame.fieldOutputs[contactField]
+                    if contactData is None:
+                        auxData = None
+                        auxData = processContactField(field, instance, frame)
+                        if not auxData is None:
+                            contactData = auxData
+                    else:
+                        auxData = None
+                        auxData = processContactField(field, instance, frame)
+                        if not auxData is None:
+                            contactData += auxData
                     
-            # if not contactData is None:
-            #     log(0,"odbFieldExtractor", "Printing field {0}".format(contactField.split()[0].strip()))
-            #     writeArray("{0}/{1} {2}.csv".format(savePath, instance.name, contactField.split()[0].strip()), contactData)
+            if not contactData is None:
+                log(0,"odbFieldExtractor", "Printing field {0}".format(contactField.split()[0].strip()))
+                writeArray("{0}/{1} {2}.csv".format(savePath, instance.name, contactField.split()[0].strip()), contactData)
         
         del frame
 

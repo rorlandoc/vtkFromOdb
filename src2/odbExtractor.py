@@ -41,12 +41,15 @@ def copyOriginalOdb(odbName):
 def extractData(odb, frameList):
     log(0, "odbExtractor", "Started process to extract data from odb")
     extractMeshData(odb)
-    extractFieldData(odb, frameList)
+    #extractFieldData(odb, frameList)
 #---    
 
 #---
 if __name__ == "__main__":
     odbName = sys.argv[-1]
+
+    errf = open("_errChecker","w+")
+    errf.close()
 
     if not odbName.endswith('.odb'):
         odbName = odbName + '.odb'
@@ -80,7 +83,7 @@ if __name__ == "__main__":
 
     
     if extracting:
-        newOdbName = copyOriginalOdb(odbName)
+        newOdbName = odbName#copyOriginalOdb(odbName)
         odb = init(newOdbName)
         frameIdList = [[x[0]-1, x[1]] for x in frameIdList]
         extractData(odb, frameIdList)
