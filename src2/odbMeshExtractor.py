@@ -1,4 +1,3 @@
-import os, sys
 from abaqus import *
 from abaqusConstants import *
 from odbTools import Timer, log, writeList, getOriginalOdbName
@@ -44,10 +43,17 @@ def extractElementConectivities(instance):
 #---
 
 #---
-def extractMeshData(odb):
+def extractMeshData(odb, duplicate):
     timer.reset()
     timer.restart()
     log(0, "odbMeshExtractor", "Started process to extract mesh data from odb")
+    odbName = odb.name.split("/")[-1]
+    if odbName.endswith(".odb"):
+            odbName = odbName[:-4]
+    if duplicate:
+        savePath = getOriginalOdbName(odbName)
+    else:
+        savePath = odbName
     instances = odb.rootAssembly.instances
     instanceNames = odb.rootAssembly.instances.keys()
     instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
@@ -57,11 +63,11 @@ def extractMeshData(odb):
         els, elsType = extractElementConectivities(instance)
 
         log(0, "odbMeshExtractor", "Printing nodal coordinates")
-        writeList("{0}/meshes/{1} nodes".format(getOriginalOdbName(odb.name), instance.name), nodes)
+        writeList("{0}/meshes/{1} nodes".format(savePath, instance.name), nodes)
         log(0, "odbMeshExtractor", "Printing element connectivities")
-        writeList("{0}/meshes/{1} elements".format(getOriginalOdbName(odb.name), instance.name), els)
+        writeList("{0}/meshes/{1} elements".format(savePath, instance.name), els)
         log(0, "odbMeshExtractor", "Printing element types")
-        writeList("{0}/meshes/{1} elementsType".format(getOriginalOdbName(odb.name), instance.name), elsType)
+        writeList("{0}/meshes/{1} elementsType".format(savePath, instance.name), elsType)
 
     timer.stop()
     log(0, "odbMeshExtractor", "Process completed in {0}".format(timer))

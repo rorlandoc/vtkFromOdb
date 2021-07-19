@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import vtk
 from vtkTools import log, logList, readArray, Timer
 
@@ -57,7 +58,7 @@ def getFieldData(odbName, instances, frame):
 
     data = {}
     for instance in fields:
-        logList("fields",fields[instance])
+        #logList("fields",fields[instance])
         log(1, "vtkGridBuilder", "Reading {0} fields".format(instance))
         data[instance] = {x:readArray(fieldsPath + instance + ' ' + x, float) for x in fields[instance]}
 

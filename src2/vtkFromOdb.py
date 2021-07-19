@@ -1,5 +1,5 @@
-import os,sys,subprocess, glob
-from datetime import datetime
+import os
+import sys
 from vtkTools import log, Timer
 from vtkGridBuilder import buildUnstructuredGrid
 
@@ -23,8 +23,7 @@ def createUnstructuredGrid(odbName):
 #---
 if __name__=="__main__":
     odbName = sys.argv[1]
-    log(0, "vtkFromOdb", "Started script on: {0}".format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), 1)
-
+    
     if odbName.endswith('.odb'):
         odbName = odbName[:-4]
     if os.path.exists(odbName):
@@ -35,4 +34,4 @@ if __name__=="__main__":
     else:
         log(0, "vtkFromOdb | ERROR", "Directory not found: {0}".format(odbName), 2, 2)
 
-    log(0, "vtkFromOdb", "Ended script on: {0}".format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), 1, 1)
+    

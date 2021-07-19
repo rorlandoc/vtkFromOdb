@@ -1,39 +1,63 @@
-import os, sys, pdb
+import os
+import pdb
 from abaqus import *
 from abaqusConstants import *
-from odbTools import Timer, log, logList, logProgress, writeArray, getOriginalOdbName
+from odbTools import Timer, log, logList, writeArray, writeList, getOriginalOdbName
 import numpy as np
 
-scalar  = ['SDV', 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
-vector  = ['U']
-tensor  = ['S', 'LE']
-contact = ['CSDMG']
 tensorComponents = ['11', '22', '33', '12']
-# tensorInvariants = ['MAX_INPLANE_PRINCIPAL', 'MIN_INPLANE_PRINCIPAL', 'OUTOFPLANE_PRINCIPAL', 
-#                     'MAX_PRINCIPAL', 'MID_PRINCIPAL', 'MIN_PRINCIPAL']
-# tensorInvariantConstants = [MAX_INPLANE_PRINCIPAL, MIN_INPLANE_PRINCIPAL, OUTOFPLANE_PRINCIPAL, 
-#                             MAX_PRINCIPAL, MID_PRINCIPAL, MIN_PRINCIPAL]
 tensorInvariants = ['MAX_INPLANE_PRINCIPAL']
 tensorInvariantConstants = [MAX_INPLANE_PRINCIPAL]
 
 #---
-def computeMaxEnvelope(frame, field, instance, id=0):
-    fieldName = "{0} {1} {2}".format(field.name, instance.name, id)
-    #log(1,"odbFieldExtractor", "Creating auxiliar field: {0}".format(fieldName))
-    auxField = frame.FieldOutput(name=fieldName,
-                                description = 'Generated envelope',
-                                validInvariants = field.validInvariants,
-                                type = field.type)
+def initFields(fieldVar):
+    if fieldVar == 'disp':
+        scalar  = []
+        vector  = ['U']
+        tensor  = []
+        contact = []
+    else:
+        scalar  = ['SDV', 'FV', 'UVARM1', 'UVARM2', 'UVARM3', 'UVARM4','UVARM6']
+        vector  = ['U']
+        tensor  = ['S', 'LE']
+        contact = ['CSDMG']
+    return scalar, vector, tensor, contact
+#---
 
-    #log(1,"odbFieldExtractor", "Starting max envelope computation")
+#---
+def createNewField(frame, _name, _description, _type, _validInvariants=None):
+    fieldId = 0
+    _name = "{0} {1}".format(_name, fieldId)
+    while _name in frame.fieldOutputs.keys():
+        fieldId += 1
+        _name = "{0} {1}".format(_name, fieldId)
+        if fieldId > 100:
+            log(0, "odbFieldExtractor | ERROR", "Too many attempts to create field", 2, 2)
+            exit(-1)
+    if _validInvariants:
+        return frame.FieldOutput(name = _name,
+                                description = _description,
+                                validInvariants = _validInvariants,
+                                type = _type)
+    else:
+        return frame.FieldOutput(name = _name,
+                                description = _description,
+                                type = _type)
+
+#---
+
+#---
+def computeMaxEnvelope(frame, field, instance):
+    fieldName = "{0} {1}".format(field.name, instance.name)
+    auxField = createNewField(frame, fieldName[::-1],'Generated envelope', field.type, field.validInvariants)
+
     bulkDataBlocks = field.getSubset(region=instance).bulkDataBlocks
     data = np.zeros((len(instance.elements),bulkDataBlocks[0].data.shape[1]))
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
         data[labels,:] = np.maximum(data[labels,:], dataBlock.data)
-
-    #log(1,"odbFieldExtractor", "Adding integration point envelope data to field")    
+ 
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
@@ -45,15 +69,10 @@ def computeMaxEnvelope(frame, field, instance, id=0):
 #---
 
 #---
-def computeMaxAbsEnvelope(frame, field, instance, id=0):
-    fieldName = "{0} {1} {2}".format(field.name, instance.name, id)
-    #log(1,"odbFieldExtractor", "Creating auxiliar field: {0}".format(fieldName))
-    auxField = frame.FieldOutput(name=fieldName,
-                                description = 'Generated envelope',
-                                validInvariants = field.validInvariants,
-                                type = field.type)
+def computeMaxAbsEnvelope(frame, field, instance):
+    fieldName = "{0} {1}".format(field.name, instance.name)
+    auxField = createNewField(frame, fieldName[::-1],'Generated envelope', field.type, field.validInvariants)
     
-    #log(1,"odbFieldExtractor", "Starting max abs envelope computation")
     bulkDataBlocks = field.getSubset(region=instance).bulkDataBlocks
     data = np.zeros((len(instance.elements),bulkDataBlocks[0].data.shape[1]))
     for block in range(len(bulkDataBlocks)):
@@ -61,7 +80,6 @@ def computeMaxAbsEnvelope(frame, field, instance, id=0):
         labels = dataBlock.elementLabels - 1
         data[labels,:] = np.maximum(data[labels,:], np.absolute(dataBlock.data))
 
-    #log(1,"odbFieldExtractor", "Adding integration point envelope data to field")
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
@@ -209,9 +227,9 @@ def processTensorInvariants(field, instance, frame, maxAbs = False):
             invField = field.getScalarField(invariant=inv)
         
             if maxAbs:
-                auxField = computeMaxAbsEnvelope(frame, invField, instance, 1)
+                auxField = computeMaxAbsEnvelope(frame, invField, instance)
             else:
-                auxField = computeMaxEnvelope(frame, invField, instance, 1)
+                auxField = computeMaxEnvelope(frame, invField, instance)
 
             interpField = auxField.getSubset(position=ELEMENT_NODAL)
             data[:,ind] = averageBulkNodeData(interpField.bulkDataBlocks, (len(instance.nodes),))
@@ -238,13 +256,9 @@ def processContactField(field, instance, frame):
         auxFieldName = field.name[:10] + ' ' + instance.name
         auxFieldName = auxFieldName[::-1]
         if auxFieldName in frame.fieldOutputs.keys():
-            #log(1,"odbFieldExtractor", "Field already exists")
             auxField = frame.fieldOutputs[auxFieldName]
         else:
-            #log(1,"odbFieldExtractor", "Creating auxiliar field: {0}".format(auxFieldName))
-            auxField = frame.FieldOutput(name = auxFieldName,
-                                         description = 'Generated union field',
-                                         type = SCALAR)
+            auxField = createNewField(frame, auxFieldName, 'Generated union field', SCALAR)
         
         data = np.zeros((len(instance.nodes),1))
         for block in bulkData:
@@ -264,7 +278,7 @@ def processContactField(field, instance, frame):
 #---
 
 #---
-def extractFieldData(odb, frameIdList):
+def extractFieldData(odb, frameIdList, fieldVar, duplicate):
     timer = Timer()
     timer.reset()
     timer.restart()
@@ -276,12 +290,25 @@ def extractFieldData(odb, frameIdList):
     instanceNames = odb.rootAssembly.instances.keys()
     instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
     instanceNames = instanceNames[::-1]
+    scalar, vector, tensor, contact = initFields(fieldVar)
+    frameValues = []
+    stepValues = {}
+    stepValues[0] = 0
+    for i, step in enumerate(odb.steps.values()):
+        if i == 0:
+            stepValues[i] = step.frames[-1].frameValue
+        else:
+            stepValues[i] = stepValues[i-1] + step.frames[-1].frameValue
     frametimer = Timer()
     for i, frameId in enumerate(frameIdList):
         frametimer.reset()
         frametimer.restart()
         log(0,"odbFieldExtractor", "Processing frame {0}/{1}".format(i+1, len(frameIdList)))
         frame = odb.steps.values()[frameId[0]].frames[frameId[1]]
+        if frameId[0] == 0:
+            frameValues.append([frame.frameValue])
+        else:
+            frameValues.append([stepValues[frameId[0]-1] + frame.frameValue])
         fieldList = frame.fieldOutputs.keys()
 
         scalarFields  = [x for x in fieldList for y in scalar  if y in x]
@@ -296,7 +323,10 @@ def extractFieldData(odb, frameIdList):
         
         if odbName.endswith(".odb"):
             odbName = odbName[:-4]
-        savePath = getOriginalOdbName(odbName) + '/fields/frame{0}'.format(i)
+        if duplicate:
+            savePath = getOriginalOdbName(odbName) + '/fields/frame{0}'.format(i)
+        else:
+            savePath = odbName + '/fields/frame{0}'.format(i)
         os.makedirs(savePath)
 
         for instanceName in instanceNames:
@@ -363,5 +393,12 @@ def extractFieldData(odb, frameIdList):
         frametimer.stop
         log(0,"odbFieldExtractor", "Frame processed in {0}".format(frametimer))
 
+    if odbName.endswith(".odb"):
+        odbName = odbName[:-4]
+    if duplicate:
+        savePath = getOriginalOdbName(odbName) + '/vtk'
+    else:
+        savePath = odbName + '/vtk'
+    writeList("{0}/frameValues.csv".format(savePath), frameValues)
     timer.stop()
     log(0, "odbFieldExtractor", "Process completed in {0}".format(timer))

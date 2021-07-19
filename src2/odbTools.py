@@ -1,5 +1,8 @@
-import sys, time
+import sys
+import time
 import json
+import argparse
+from contextlib import contextmanager
 
 #---
 def formatElapsedTime(dt):
@@ -43,6 +46,27 @@ class Timer(object):
     @property
     def total(self):
         return formatElapsedTime(time.time()-self.t0)
+#---
+
+#---
+@contextmanager
+def redirectStdOut(stream):
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    sys.stdout = stream
+    sys.stderr = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+#---
+
+#---
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_help(sys.stderr)
+        self.exit(2, '%s: error: %s\n' % (self.prog, message))
 #---
 
 #---
