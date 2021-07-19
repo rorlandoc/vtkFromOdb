@@ -108,7 +108,7 @@ def writeArray(filename, data):
 def getOriginalOdbName(odbName):
     if odbName.endswith('.odb'):
         odbName = odbName[:-4]
-    return odbName#[:-(odbName[::-1].index("_") + 1)]
+    return odbName[:-(odbName[::-1].index("_") + 1)]
 #---
 
 #---
