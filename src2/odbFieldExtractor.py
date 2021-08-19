@@ -43,7 +43,6 @@ def createNewField(frame, _name, _description, _type, _validInvariants=None):
         return frame.FieldOutput(name = _name,
                                 description = _description,
                                 type = _type)
-
 #---
 
 #---
@@ -390,7 +389,7 @@ def extractFieldData(odb, frameIdList, fieldVar, duplicate):
                 writeArray("{0}/{1} {2}.csv".format(savePath, instance.name, contactField.split()[0].strip()), contactData)
         
         del frame
-        frametimer.stop
+        frametimer.stop()
         log(0,"odbFieldExtractor", "Frame processed in {0}".format(frametimer))
 
     if odbName.endswith(".odb"):
