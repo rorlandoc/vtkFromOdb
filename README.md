@@ -76,7 +76,7 @@ Current feature set is limited, but expanding:
 - supported stress state: `plane stress` with the following invariants and components `['11', '22', '33', '12', 'MAX_INPLANE_PRINCIPAL']`
 - filters / post-processing : currently only envelopes are computed for all tensor fields.
 - vector fields are stored with the respective components as `vtkFloatArray` with 3 components - Paraview can make use of this for deformed representations and so on.
-- frame times are saved and a seperate `PVD` file is create with the time series data containing the `vtkMultiBlockDataSets`;
+- frame times are saved and a seperate `PVD` file is created with the time series data containing the `vtkMultiBlockDataSets`;
 
 ### **Expansion**
 
