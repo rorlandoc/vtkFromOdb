@@ -7,7 +7,10 @@ timerInstance = Timer()
 
 vtkElemType = {'S4R' :  9,   # quad
                'SC8R': 12,   # hex
-               'SC6R': 13 }  # wedge
+               'SC6R': 13,   # wedge
+               'C3D6': 13,
+               'C3D8': 12,
+               'C3D8R': 12,}  
 
 #---
 def extractNodalCoordinates(instance):

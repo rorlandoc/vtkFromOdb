@@ -23,7 +23,7 @@ def createUnstructuredGrid(odbName):
 #---
 if __name__=="__main__":
     odbName = sys.argv[1]
-    
+
     if odbName.endswith('.odb'):
         odbName = odbName[:-4]
     if os.path.exists(odbName):
@@ -32,6 +32,4 @@ if __name__=="__main__":
         else:
             createUnstructuredGrid(odbName)
     else:
-        log(0, "vtkFromOdb | ERROR", "Directory not found: {0}".format(odbName), 2, 2)
-
-    
+        log(0, "vtkFromOdb | ERROR", "File not found: {0}".format(odbName), 2, 2)

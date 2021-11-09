@@ -1,7 +1,10 @@
-import os, sys
-from time import perf_counter
+import os
+import sys
 import vtk
-from vtkTools import log, formatElapsedTime, logList, readArray
+from vtkTools import log, logList, readArray, Timer
+
+timer = Timer()
+timerInstance = Timer()
 
 #---
 def getInstanceList(odbName):
@@ -27,7 +30,8 @@ def getFrameList(odbName):
 
 #---
 def getMeshData(odbName, instances):
-    tStart = perf_counter()
+    timerInstance.reset()
+    timerInstance.restart()
     log(1, "vtkGridBuilder", "Gathering mesh data")
 
     meshPath = "{0}/meshes/".format(odbName)
@@ -35,35 +39,38 @@ def getMeshData(odbName, instances):
     elements =     {x:readArray(meshPath + x + ' elements'    , int  ) for x in instances}
     elementsType = {x:readArray(meshPath + x + ' elementsType', int  ) for x in instances}
 
-    tElapsted = perf_counter() - tStart
-    log(1, "vtkGridBuilder", "Process completed in {0}".format(formatElapsedTime(tElapsted)))
+    timerInstance.stop()
+    log(1, "vtkGridBuilder", "Process completed in {0}".format(timerInstance))
 
     return nodes, elements, elementsType
 #---
 
 #---
 def getFieldData(odbName, instances, frame):
-    tStart = perf_counter()
+    timerInstance.reset()
+    timerInstance.restart()
     log(1, "vtkGridBuilder", "Gathering fields")
 
     fieldsPath = "{0}/fields/{1}/".format(odbName,frame)
     files = os.listdir(fieldsPath)
     fields = {i:[f.replace(i,"").replace(".csv","").strip() for f in files if i + ' ' in f] for i in instances}
 
+
     data = {}
     for instance in fields:
         log(1, "vtkGridBuilder", "Reading {0} fields".format(instance))
         data[instance] = {x:readArray(fieldsPath + instance + ' ' + x, float) for x in fields[instance]}
 
-    tElapsted = perf_counter() - tStart
-    log(1, "vtkGridBuilder", "Process completed in {0}".format(formatElapsedTime(tElapsted)))
+    timerInstance.stop()
+    log(1, "vtkGridBuilder", "Process completed in {0}".format(timerInstance))
 
     return fields, data
 #---
 
 #---
 def buildUnstructuredGrid(odbName):
-    tStart = perf_counter()
+    timer.reset()
+    timer.restart()
     log(1, "vtkGridBuilder", "Started process of building vtkUnstructuredGrid")
 
     instances = getInstanceList(odbName)
@@ -143,8 +150,8 @@ def buildUnstructuredGrid(odbName):
         writer.SetInputData(mb)
         writer.Write()
 
-    tElapsted = perf_counter() - tStart
-    log(1, "vtkGridBuilder", "Process completed in {0}".format(formatElapsedTime(tElapsted)))
+    timer.stop()
+    log(1, "vtkGridBuilder", "Process completed in {0}".format(timer))
 #---
 
 #---

@@ -1,4 +1,6 @@
-import sys, time, csv
+import sys
+import time
+import csv
 
 #---
 def formatElapsedTime(dt):

@@ -79,6 +79,14 @@ def log(level, title, msg, padBefore=0, padAfter=0):
 #---
 
 #---
+def deb(msg, padBefore=0, padAfter=0):
+    padBeforeStr = "\n"*padBefore
+    padAfterStr = "\n"*padAfter
+    stringVal = "{0}<<< {1} >>>{2}".format(padBeforeStr, str(msg), padAfterStr)
+    print >> sys.__stdout__, stringVal
+#---
+
+#---
 def logList(name, list):
     levelStr = " "*6
     print >> sys.__stdout__, ""

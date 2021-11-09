@@ -58,7 +58,6 @@ def getFieldData(odbName, instances, frame):
 
     data = {}
     for instance in fields:
-        #logList("fields",fields[instance])
         log(1, "vtkGridBuilder", "Reading {0} fields".format(instance))
         data[instance] = {x:readArray(fieldsPath + instance + ' ' + x, float) for x in fields[instance]}
 

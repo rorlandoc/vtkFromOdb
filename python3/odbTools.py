@@ -1,18 +1,27 @@
-import sys, time
+import sys
+import time
 import json
+import argparse
+from contextlib import contextmanager
 
 #---
 def formatElapsedTime(dt):
-    if dt > 360:
-        return '%.2f h %.2f min %.2f s' % ((dt//60)//60, dt//60,dt%60)
+    s = dt
+    days    = s // (24*3600); s %= (24*3600)
+    hours   = s // 3600;      s %= 3600
+    minutes = s // 60;        s %= 60
+    if dt > 3600*24:
+        return '{0:2g} days {0:2g} h {1:2g} min {2:.2f} s'.format(days, hours, minutes, s)
+    if dt > 3600:
+        return '{0:2g} h {1:2g} min {2:.2f} s'.format(hours, minutes, s)
     elif dt>60:
-        return '%.2f min %.2f s' % (dt//60,dt%60)
+        return '{0:2g} min {1:.2f} s'.format(minutes, s)
     elif dt>1:
-        return '%.2f s' % dt
+        return '{0:.2f} s'.format(s)
     elif dt<0.001:
-        return '%.2f us' % (1000000.0*dt)
+        return '{0:.2f} us'.format(1000000.0*s)
     else:
-        return '%.2f ms' % (1000.0*dt)
+        return '{0:.2f} ms'.format(1000.0*s)
 #---
 
 #---
@@ -40,11 +49,40 @@ class Timer(object):
 #---
 
 #---
+@contextmanager
+def redirectStdOut(stream):
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    sys.stdout = stream
+    sys.stderr = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+#---
+
+#---
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_help(sys.stderr)
+        self.exit(2, '%s: error: %s\n' % (self.prog, message))
+#---
+
+#---
 def log(level, title, msg, padBefore=0, padAfter=0):
     levelStr = "> "*(level + 1)
     padBeforeStr = "\n"*padBefore
     padAfterStr = "\n"*padAfter
     stringVal = "{0}({1}){2}{3}{4}".format(padBeforeStr, title, levelStr, msg, padAfterStr)
+    print >> sys.__stdout__, stringVal
+#---
+
+#---
+def deb(msg, padBefore=0, padAfter=0):
+    padBeforeStr = "\n"*padBefore
+    padAfterStr = "\n"*padAfter
+    stringVal = "{0}<<< {1} >>>{2}".format(padBeforeStr, str(msg), padAfterStr)
     print >> sys.__stdout__, stringVal
 #---
 
@@ -100,6 +138,8 @@ def writeArray(filename, data):
 
 #---
 def getOriginalOdbName(odbName):
+    if odbName.endswith('.odb'):
+        odbName = odbName[:-4]
     return odbName[:-(odbName[::-1].index("_") + 1)]
 #---
 

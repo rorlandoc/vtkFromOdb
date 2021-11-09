@@ -2,9 +2,10 @@ import os
 import pdb
 from abaqus import *
 from abaqusConstants import *
-from odbTools import Timer, log, logList, writeArray, writeList, getOriginalOdbName
+from odbTools import Timer, log, deb, logList, writeArray, writeList, getOriginalOdbName
 import numpy as np
 
+supportedElements = ['SC8R', 'SC6R', 'CSS8', 'S4R']
 tensorComponents = ['11', '22', '33', '12']
 tensorInvariants = ['MAX_INPLANE_PRINCIPAL']
 tensorInvariantConstants = [MAX_INPLANE_PRINCIPAL]
@@ -46,17 +47,51 @@ def createNewField(frame, _name, _description, _type, _validInvariants=None):
 #---
 
 #---
+def filterSupportedEls(odb, instances, instanceNames):
+
+    instanceElList = ()
+    for instanceName in instanceNames:
+        instance = instances[instanceName]
+
+        supportedElsLabels = np.fromiter((el.label if el.type in supportedElements else -1 for el in instance.elements), np.int32)
+        sortedIndices = supportedElsLabels.argsort()
+        supportedElsLabels[:] = supportedElsLabels[sortedIndices]
+
+        indexFirstPositive = supportedElsLabels.searchsorted(0)
+
+        instanceElList += ((instanceName, supportedElsLabels[indexFirstPositive:]),)
+        log(0, "odbFieldExtractor | DEBUG", "Instance {0} has {1} supported elements of {2} total".format(instanceName, len(supportedElsLabels[indexFirstPositive:]), len(instance.elements)))
+
+    newSetName = "extractionElements"
+    d = 0
+    setName = newSetName + " {0}".format(d)
+    while setName in odb.rootAssembly.elementSets:
+        d += 1
+        setName = newSetName + " {0}".format(d)
+    supportedElmSet = odb.rootAssembly.ElementSetFromElementLabels(
+            name = setName, 
+            elementLabels = instanceElList 
+    )
+
+    return supportedElmSet
+
+#---
+
+#---
 def computeMaxEnvelope(frame, field, instance):
     fieldName = "{0} {1}".format(field.name, instance.name)
     auxField = createNewField(frame, fieldName[::-1],'Generated envelope', field.type, field.validInvariants)
 
     bulkDataBlocks = field.getSubset(region=instance).bulkDataBlocks
-    data = np.zeros((len(instance.elements),bulkDataBlocks[0].data.shape[1]))
+
+    data = np.zeros((len(instance.elements), bulkDataBlocks[0].data.shape[1]))
+    #log(0, "odbFieldExtractor | DEBUG", "data.shape: {0}".format(data.shape))
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
+        #log(0, "odbFieldExtractor | DEBUG", "block.shape: {0}".format(dataBlock.data.shape))
         data[labels,:] = np.maximum(data[labels,:], dataBlock.data)
- 
+    
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
@@ -65,6 +100,38 @@ def computeMaxEnvelope(frame, field, instance):
                         labels = labels + 1,
                         data = data[labels,:])
     return auxField
+
+
+    # size = 1
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) == 1:
+    #         size = max(size, dataBlock.data.shape[1])
+    #         log(0, "odbFieldExtractor | DEBUG", "size was {0} now is {1}".format(sizeold, size))
+
+    
+    # data = np.zeros((len(instance.elements), size))
+    # log(0, "odbFieldExtractor | DEBUG", "data.shape: {0}".format(data.shape))
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) > 1:
+    #         log(0, "odbFieldExtractor | WARNING", "Ignoring data block due to incompatible elements")
+    #     else:
+    #         labels = dataBlock.elementLabels - 1
+    #         log(0, "odbFieldExtractor | DEBUG", "block.shape: {0}".format(dataBlock.data.shape))
+    #         data[labels,:] = np.maximum(data[labels,:], dataBlock.data)
+    
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) > 1:
+    #         log(0, "odbFieldExtractor | WARNING", "Ignoring data block due to incompatible elements")
+    #     else:
+    #         labels = dataBlock.elementLabels - 1
+    #         auxField.addData(position = INTEGRATION_POINT,
+    #                         instance = instance,
+    #                         labels = labels + 1,
+    #                         data = data[labels,:])
+    # return auxField
 #---
 
 #---
@@ -73,10 +140,13 @@ def computeMaxAbsEnvelope(frame, field, instance):
     auxField = createNewField(frame, fieldName[::-1],'Generated envelope', field.type, field.validInvariants)
     
     bulkDataBlocks = field.getSubset(region=instance).bulkDataBlocks
-    data = np.zeros((len(instance.elements),bulkDataBlocks[0].data.shape[1]))
+
+    data = np.zeros((len(instance.elements), bulkDataBlocks[0].data.shape[1]))
+    #log(0, "odbFieldExtractor | DEBUG", "data.shape: {0}".format(data.shape))
     for block in range(len(bulkDataBlocks)):
         dataBlock = bulkDataBlocks[block]
         labels = dataBlock.elementLabels - 1
+        #log(0, "odbFieldExtractor | DEBUG", "block.shape: {0}".format(dataBlock.data.shape))
         data[labels,:] = np.maximum(data[labels,:], np.absolute(dataBlock.data))
 
     for block in range(len(bulkDataBlocks)):
@@ -87,37 +157,41 @@ def computeMaxAbsEnvelope(frame, field, instance):
                         labels = labels + 1,
                         data = data[labels,:])
     return auxField
-#---
 
-#---
-def averageBulkNodeDataSlow(bulkDataBlocks, size):
-    #log(1,"odbFieldExtractor", "Starting nodal averaging")
-    log(4,"odbFieldExtractor", "Processing {0} bulkDataBlocks".format(len(bulkDataBlocks)))
+    # size = 1
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) < 1:
+    #         sizeold = size
+    #         size = max(size, dataBlock.data.shape[1])
+    #         log(0, "odbFieldExtractor | DEBUG", "size was {0} now is {1}".format(sizeold, size))
 
-    data = np.zeros(size)
-    count = np.zeros(size)
-    for block in bulkDataBlocks:
-        unsortedData = block.data
-        labels = block.nodeLabels
-        for i,label in enumerate(labels):
-            data[label - 1] += unsortedData[i]
-            if len(size) > 1:
-                count[label - 1] += np.array((1,)*size[1])
-            else:
-                count[label - 1] += 1
+    # data = np.zeros((len(instance.elements),size))
+    # log(0, "odbFieldExtractor | DEBUG", "data.shape: {0}".format(data.shape))
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) > 1:
+    #         log(0, "odbFieldExtractor | WARNING", "Ignoring data block due to incompatible elements")
+    #     else:
+    #         labels = dataBlock.elementLabels - 1
+    #         log(0, "odbFieldExtractor | DEBUG", "block.shape: {0}".format(dataBlock.data.shape))
+    #         data[labels,:] = np.maximum(data[labels,:], np.absolute(dataBlock.data))
 
-    if len(size) > 1:
-        nzId = np.nonzero(count[:,0])
-    else:
-        nzId = np.nonzero(count)
-    data[nzId] = data[nzId] / count[nzId]
-
-    return data
+    # for block in range(len(bulkDataBlocks)):
+    #     dataBlock = bulkDataBlocks[block]
+    #     if max(dataBlock.integrationPoints) > 1:
+    #         log(0, "odbFieldExtractor | WARNING", "Ignoring data block due to incompatible elements")
+    #     else:
+    #         labels = dataBlock.elementLabels - 1
+    #         auxField.addData(position = INTEGRATION_POINT,
+    #                         instance = instance,
+    #                         labels = labels + 1,
+    #                         data = data[labels,:])
+    # return auxField
 #---
 
 #---
 def averageBulkNodeData(bulkDataBlocks, size):
-    #log(1,"odbFieldExtractor", "Starting nodal averaging")
     log(4,"odbFieldExtractor", "Processing {0} bulkDataBlocks".format(len(bulkDataBlocks)))
 
     data = np.zeros(size)
@@ -289,6 +363,7 @@ def extractFieldData(odb, frameIdList, fieldVar, duplicate):
     instanceNames = odb.rootAssembly.instances.keys()
     instanceNames = [x for x in instanceNames if not 'ASSEMBLY' in x]
     instanceNames = instanceNames[::-1]
+    relevantElements = filterSupportedEls(odb, instances, instanceNames)
     scalar, vector, tensor, contact = initFields(fieldVar)
     frameValues = []
     stepValues = {}
@@ -338,7 +413,7 @@ def extractFieldData(odb, frameIdList, fieldVar, duplicate):
             
             for scalarField in scalarFields:
                 if scalarField in frame.fieldOutputs.keys():
-                    field = frame.fieldOutputs[scalarField]
+                    field = frame.fieldOutputs[scalarField].getSubset(region=relevantElements)
                     scalarData = processScalarField(field, instance, frame)
                 if not scalarData is None:
                     log(2,"odbFieldExtractor", "Printing field {0}".format(scalarField))
@@ -356,7 +431,7 @@ def extractFieldData(odb, frameIdList, fieldVar, duplicate):
 
             for tensorField in tensorFields:
                 if tensorField in frame.fieldOutputs.keys():
-                    field = frame.fieldOutputs[tensorField]
+                    field = frame.fieldOutputs[tensorField].getSubset(region=relevantElements)
                     tensorData = processTensorField(field, instance, frame)
                     invData, invLabels = processTensorInvariants(field, instance, frame)
                 if not tensorData is None:
