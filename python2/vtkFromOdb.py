@@ -24,12 +24,12 @@ def createUnstructuredGrid(odbName):
 if __name__=="__main__":
     odbName = sys.argv[1]
     
-    if odbName.endswith('.odb'):
-        odbName = odbName[:-4]
     if os.path.exists(odbName):
         if os.path.isfile("_errChecker"):
             log(0, "vtkFromOdb | ERROR", "Odb extraction process did not complete successfuly")
         else:
+            if odbName.endswith('.odb'):
+                odbName = odbName[:-4]
             createUnstructuredGrid(odbName)
     else:
         log(0, "vtkFromOdb | ERROR", "File not found: {0}".format(odbName), 2, 2)
